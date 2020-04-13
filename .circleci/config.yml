@@ -1,0 +1,279 @@
+# --------------------------------------------------- #
+# https://github.com/habx/devops-template-circleci    #
+# ----------- DO NOT EDIT BELOW THIS LINE ----------- #
+# --------------------------------------------------- #
+version: 2.1
+
+# --- Anchor alias ---- #
+# - Docker configuration - #
+alias:
+  # https://circleci.com/docs/2.0/circleci-images/#nodejs
+  - &docker_node12_configuration
+    docker:
+      - image: circleci/node:12.0.0
+        user: root
+  - &docker_buildpack_deps_configuration
+    docker:
+      - image: circleci/buildpack-deps:stretch
+        user: root
+  - &docker_buildpack_deps_python_configuration
+    docker:
+      - image: circleci/python
+        user: root
+  # - Jobs filters - #
+  - &filters_ignore_tags
+    tags:
+      ignore: /.*/
+  - &filters_allow_tags
+    tags:
+      only: /^v.*/
+  - &filters_allow_branch_dev
+    branches:
+      only:
+        - dev
+  # - Step - #
+  - &preconfig
+    run:
+      name: Preconfigure environment ~/.npmrc
+      command: |
+        echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+  # - Node modules - #
+  - &install_node_modules_with_cache
+    node/with-cache:
+      dir: node_modules
+      cache-version: dev{{ .Environment.CACHE_VERSION }}
+      steps:
+        - run:
+            name: Install node module
+            command: npm install
+  - &install_node_modules_with_cache_production
+    node/with-cache:
+      dir: node_modules
+      cache-version: prod{{ .Environment.CACHE_VERSION }}
+      steps:
+        - run:
+            name: Install node module production
+            command: npm install --production
+  - &fetch_node_modules_with_cache_production
+    node/with-cache:
+      dir: node_modules
+      cache-version: prod{{ .Environment.CACHE_VERSION }}
+      steps:
+        - run: echo
+# --- Anchor alias ---- #
+jobs:
+  build:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache_production
+      - *install_node_modules_with_cache
+      - run: export PUBLIC_URL=https://cdn.habx.com/apps/${CIRCLE_PROJECT_REPONAME}/$(if [ -z "$CIRCLE_TAG" ]; then echo $(echo $CIRCLE_BRANCH | sed 's/\/\|@//g')-${CIRCLE_SHA1:0:7}; else echo $CIRCLE_TAG; fi)$(if [ -n "$CUSTOM_CDN_URL_PREFIX" ]; then echo $CUSTOM_CDN_URL_PREFIX; fi); export NODE_ENV=production; npm run build
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - build
+  build-for-test:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run:
+          command: |
+            npm run build:test
+          environment:
+            NODE_ENV: production
+            REACT_APP_HABX_CONFIG: puppeteer
+            PUBLIC_URL: /
+      - persist_to_workspace:
+          root: ~/project
+          paths:
+            - build-test
+
+  lint-schema-graphql:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run: npm run build:schema
+      - run: npm run lint
+
+  lint:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run: npm run lint
+
+  test-schema:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run: npm run build:schema
+
+  bundlewatch:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run: npm run bundlewatch
+
+  tests:
+    <<: *docker_node12_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run: npm run test
+
+  tests-puppeteer:
+    docker:
+      - image: jean9696/drone-puppeteer
+    parallelism: 3
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
+      - *preconfig
+      - *install_node_modules_with_cache
+      - run:
+          name: Puppeteer test
+          command: |
+            apt-get -yq update
+            apt-get -y install nginx
+            sed -i 's/root.*/root \/root\/project\/build-test\/;/' /etc/nginx/sites-enabled/default
+            nginx -c /etc/nginx/nginx.conf
+            chmod -R a+rx /root/
+            npm run test
+    environment:
+      HABX_ROLE: admin
+      LOCAL_URL: http://localhost
+
+  build_container:
+    <<: *docker_buildpack_deps_python_configuration
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/project
+      - *fetch_node_modules_with_cache_production
+      - run: wget https://raw.githubusercontent.com/habx/docker-devops-build-infos/master/gen_node_build_infos.py -O - | python
+      - aws-ecr/build-and-push-image:
+          repo: ${CIRCLE_PROJECT_REPONAME}
+          tag: $(if [ -z "$CIRCLE_TAG" ]; then echo $(echo $CIRCLE_BRANCH | sed 's/\/\|@//g')-${CIRCLE_SHA1:0:7}; else echo $CIRCLE_TAG; fi)
+          extra-build-args: --build-arg REVISION="$(git rev-parse --short HEAD)" --build-arg CREATED="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" --build-arg VERSION="$(cat version.txt)" --build-arg TITLE="${CIRCLE_PROJECT_REPONAME}" --build-arg SOURCE="${CIRCLE_REPOSITORY_URL}" --build-arg AUTHORS="${CIRCLE_USERNAME}"
+          setup-remote-docker: true
+
+  sentry-sourcemap:
+    <<: *docker_buildpack_deps_python_configuration
+    steps:
+      - checkout
+      - *preconfig
+      - attach_workspace:
+          at: ~/project
+      - run:
+          name: Upload sentry sourcemap
+          command: |
+            wget https://raw.githubusercontent.com/habx/docker-devops-build-infos/master/gen_node_build_infos.py -O - | python
+            curl -sL https://sentry.io/get-cli/ | bash
+            sentry-cli releases -o habx -p ${CIRCLE_PROJECT_REPONAME} new $(cat version.txt)
+            sentry-cli releases -o habx -p ${CIRCLE_PROJECT_REPONAME} files $(cat version.txt) upload-sourcemaps build/ --url-prefix "https://cdn.habx.com/apps/${CIRCLE_PROJECT_REPONAME}/$(if [ -z "$CIRCLE_TAG" ]; then echo $(echo $CIRCLE_BRANCH | sed 's/\/\|@//g')-${CIRCLE_SHA1:0:7}; else echo $CIRCLE_TAG; fi)$(if [ -n "$CUSTOM_CDN_URL_PREFIX" ]; then echo $CUSTOM_CDN_URL_PREFIX; fi)" --rewrite
+
+  push-assets-to-cdn:
+    <<: *docker_buildpack_deps_python_configuration
+    steps:
+      - attach_workspace:
+          at: ~/project
+      - aws-s3/copy:
+          from: build$(if [ -n "$CUSTOM_CDN_FROM_PATH" ]; then echo $CUSTOM_CDN_FROM_PATH; fi)
+          to: s3://habx-cdn/apps/${CIRCLE_PROJECT_REPONAME}/$(if [ -z "$CIRCLE_TAG" ]; then echo $(echo $CIRCLE_BRANCH | sed 's/\/\|@//g')-${CIRCLE_SHA1:0:7}; else echo $CIRCLE_TAG; fi)$(if [ -n "$CUSTOM_CDN_TO_PATH" ]; then echo $CUSTOM_CDN_TO_PATH; fi)
+          arguments: |
+            --exclude "*.map" \
+            --recursive \
+            --cache-control "public, max-age=31536000" \
+            --acl public-read
+
+  deploy_to_dev:
+    <<: *docker_buildpack_deps_configuration
+    steps:
+      - kubernetes/install-kubectl:
+          kubectl-version: v1.15.0
+      - run:
+          name: Configure kubernetes
+          command: |
+            kubectl config set-credentials default --token=${KUBERNETES_TOKEN_DEV}
+            kubectl config set-cluster default --server=${KUBERNETES_SERVER_DEV} --insecure-skip-tls-verify=true
+            kubectl config set-context default --cluster=default --user=default
+            kubectl config use-context default
+      - kubernetes/update-container-image:
+          container-image-updates: ${CIRCLE_PROJECT_REPONAME}=${AWS_ECR_ACCOUNT_URL}/${CIRCLE_PROJECT_REPONAME}:$(if [ -z "$CIRCLE_TAG" ]; then echo $(echo $CIRCLE_BRANCH | sed 's/\/\|@//g')-${CIRCLE_SHA1:0:7}; else echo $CIRCLE_TAG; fi)
+          resource-name: deployment/${CIRCLE_PROJECT_REPONAME}
+          namespace: $(if [ -n "$CUSTOM_DEPLOYMENT_NAMESPACE" ]; then echo $CUSTOM_DEPLOYMENT_NAMESPACE; elif [ -z "$CIRCLE_TAG" ]; then echo dev; else echo staging; fi)
+          show-kubectl-command: true
+
+orbs:
+  node: circleci/node@1.0.1
+  aws-ecr: circleci/aws-ecr@6.1.0
+  kubernetes: circleci/kubernetes@0.11.0
+  aws-s3: circleci/aws-s3@1.0.0
+# --- END --- #
+# --------------------------------------------------- #
+# -------------- DEFINE YOUR WORKFLOW --------------- #
+# --------------------------------------------------- #
+workflows:
+  deploy-to-dev:
+    jobs:
+      - build:
+          context: default_env_vars
+          filters:
+            <<: *filters_allow_tags
+      - lint-schema-graphql:
+          context: default_env_vars
+          filters:
+            <<: *filters_ignore_tags
+      - bundlewatch:
+          context: default_env_vars
+          filters:
+            <<: *filters_ignore_tags
+      - sentry-sourcemap:
+          context: default_env_vars
+          requires:
+            - build
+            - lint-schema-graphql
+          filters:
+            <<: *filters_allow_branch_dev
+            <<: *filters_allow_tags
+      - build_container:
+          context: default_env_vars
+          requires:
+            - build
+            - lint-schema-graphql
+          filters:
+            <<: *filters_allow_branch_dev
+            <<: *filters_allow_tags
+      - push-assets-to-cdn:
+          context: default_env_vars
+          requires:
+            - build
+            - lint-schema-graphql
+          filters:
+            <<: *filters_allow_branch_dev
+            <<: *filters_allow_tags
+      - deploy_to_dev:
+          context: default_env_vars
+          requires:
+            - build
+            - lint-schema-graphql
+            - build_container
+          filters:
+            <<: *filters_allow_branch_dev
+            <<: *filters_allow_tags

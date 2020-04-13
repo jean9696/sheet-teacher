@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@api/*": ["api/*"],
+      "@api": ["api"],
+      "@components/*": ["components/*"],
+      "@config": ["config"],
+      "@constants": ["constants"],
+      "@helpers/*": ["helpers/*"],
+      "@hooks": ["hooks"],
+      "@hooks/*": ["hooks/*"],
+      "@intl": ["intl"],
+      "@intl/*": ["intl/*"],
+      "@lib": ["lib"],
+      "@lib/*": ["lib/*"],
+      "@pages": ["pages"],
+      "@pages/*": ["pages/*"],
+      "@style": ["style"],
+      "@style/*": ["style/*"],
+      "@globalTypes/*": ["globalTypes/*"],
+      "@globalTypes": ["globalTypes"]
+    },
+    "baseUrl": "./src"
+  }
+}

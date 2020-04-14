@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { BrowserRouter } from 'react-router-dom'
 
-import { captureException } from '@habx/lib-client-reporting'
 import { ThemeProvider, Provider, DesignSystemThemePatch } from '@habx/ui-core'
 
 import FormHelperProvider from './FormHelperProvider'
@@ -21,7 +20,7 @@ class Providers extends React.PureComponent {
   }
 
   componentDidCatch(error, errorInfo) {
-    captureException(error, errorInfo)
+    console.error(error, errorInfo) // eslint-disable-line
   }
 
   render() {

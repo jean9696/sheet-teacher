@@ -10,5 +10,3 @@ blockingTitleRegex: '\bWIP\b'
 rules:
   - minApprovals:
       CONTRIBUTOR: 1
-  - requiredLabels:
-      - dependencies

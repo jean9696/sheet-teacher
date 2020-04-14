@@ -1,15 +1,1 @@
-# 🗒 Template for client creation
-
-### What's in here ?
-* Appolo client configuration with some of our apis
-* Eslint
-* Graphql lint + typechecking
-* Typescript + aliases
-* ACL setup
-* Navbar with hello world page
-
-### What to change when you use this template ?
-
-* Port to run the client so other clients are not in conflict
-* router basename in `App.ts`
-* sentry config
+[![Netlify Status](https://api.netlify.com/api/v1/badges/e4badf03-14d3-429b-b349-4559f4d6edf5/deploy-status)](https://app.netlify.com/sites/pedantic-brown-694855/deploys)

@@ -1,3 +1,3 @@
 {
-  "extends": ["@habx/client/typescript", "@habx/graphql"]
+  "extends": ["@habx/client/typescript"]
 }

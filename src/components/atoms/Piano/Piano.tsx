@@ -3,7 +3,7 @@ import * as React from 'react'
 import { Text } from '@habx/ui-core'
 
 import { Notes, translateNote } from '@lib/notes'
-import { playNote, setupSounds } from '@lib/sound'
+import { playNote } from '@lib/sound'
 
 import { Key, PianoContainer } from './Piano.style'
 
@@ -48,10 +48,6 @@ const mapKeys = (notes) => {
 const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
   const [activeNote, setActiveNote] = React.useState<Notes>(null)
   const mappedKeys = React.useMemo(() => mapKeys(NOTES), [])
-
-  React.useLayoutEffect(() => {
-    setupSounds()
-  }, [])
 
   const handleNotePlayed = React.useCallback(
     (note: Notes) => {

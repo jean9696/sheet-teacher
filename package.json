@@ -43,7 +43,7 @@
     "react-scripts": "^3.4.1",
     "styled-components": "^5.1.0",
     "tone": "^13.8.25",
-    "vexflow": "^1.2.93"
+    "vexflow": "^3.0.1"
   },
   "devDependencies": {
     "@habx/eslint-config-client": "^3.1.0",

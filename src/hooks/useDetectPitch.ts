@@ -1,5 +1,7 @@
 // https://github.com/cwilso/PitchDetect/blob/master/index.html
+import { debounce } from 'lodash'
 import * as React from 'react'
+
 // @ts-ignore
 window.AudioContext = window.AudioContext || window.webkitAudioContext
 
@@ -279,10 +281,12 @@ const useDetectPitch = (callback: (note: string) => void) => {
     })
   )
   React.useEffect(() => {
-    PitchDetectorRef.current.addNoteListener(callback)
+    PitchDetectorRef.current.addNoteListener(debounce(callback, 500))
+  }, [callback])
+  React.useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => PitchDetectorRef.current.destroy()
-  }, [callback])
+  }, [])
   return sound
 }
 

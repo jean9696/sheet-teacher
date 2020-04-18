@@ -265,7 +265,9 @@ class PitchDetector {
 
   public destroy = () => {
     this.processIds = []
-    this.audioContext.close()
+    try {
+      this.audioContext.close()
+    } catch (e) {}
   }
 }
 

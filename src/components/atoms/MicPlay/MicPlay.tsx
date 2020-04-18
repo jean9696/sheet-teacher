@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { CSSProperties } from 'styled-components'
 
-import useDetectPitch from '@hooks/useDetechPitch'
+import useDetectPitch from '@hooks/useDetectPitch'
 import { translateNote } from '@lib/notes'
 import { Notes } from '@lib/types'
 

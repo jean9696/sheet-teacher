@@ -262,6 +262,11 @@ class PitchDetector {
   }
 
   public stopProcesses = () => (this.processIds = [])
+
+  public destroy = () => {
+    this.processIds = []
+    this.audioContext.close()
+  }
 }
 
 const useDetectPitch = (callback: (note: string) => void) => {
@@ -274,7 +279,7 @@ const useDetectPitch = (callback: (note: string) => void) => {
   React.useEffect(() => {
     PitchDetectorRef.current.addNoteListener(callback)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    return () => PitchDetectorRef.current.stopProcesses()
+    return () => PitchDetectorRef.current.destroy()
   }, [callback])
   return sound
 }

@@ -1,64 +1,159 @@
 import * as React from 'react'
 
-import { Tab } from '@habx/ui-core'
+import {
+  ActionBar,
+  Button,
+  IconButton,
+  Modal,
+  palette,
+  Tab,
+  Title,
+  Tooltip,
+} from '@habx/ui-core'
 
-import { Piano, MicPlay } from '@components/atoms'
+import { MicPlay, Piano, Timer } from '@components/atoms'
+import { Stave } from '@components/molecules'
 
-import { Notes } from '@lib/notes'
-import Stave from '@pages/Home/Stave'
+import { GenerateNoteConfig, StaveClef } from '@lib/config'
+import { generateNotes, isSameNote } from '@lib/notes'
+import { Modes, Notes } from '@lib/types'
 
-import { GameContent, HomeContainer, ModesContainer } from './Home.style'
+import ConfigForm from './ConfigForm/ConfigForm'
+import reducer, { ActionTypes } from './Home.reducer'
+import {
+  GameContent,
+  HomeContainer,
+  HomeContent,
+  HomeHeaderBar,
+  ModesContainer,
+  SmallConfigConfigContainer,
+  StaveContainer,
+  TimerContainer,
+} from './Home.style'
+import useScore from './Score/useScore'
 
-enum Modes {
-  piano = 1,
-  mic = 2,
+const DEFAULT_CONFIG: GenerateNoteConfig = {
+  octaves: [4],
+  withFlat: false,
+  withSharp: false,
+  clef: StaveClef.treble,
 }
 
-const generateNote = (): Notes => {
-  const notes = Object.values(Notes)
-  const randomIndex = Math.floor(Math.random() * Math.floor(notes.length - 1))
-  return notes[randomIndex]
-}
-
-const generateNotes = (length: number) =>
-  new Array(length).fill(0).map(generateNote)
-
-const Home: React.FunctionComponent<TemplateInterface> = () => {
-  const [mode, setMode] = React.useState<Modes>(Modes.piano)
-  const [currentNoteIndex, setCurrentNoteIndex] = React.useState<number>(0)
-  const [notes, setRawNotes] = React.useState<Notes[]>(generateNotes(4))
-
-  React.useLayoutEffect(() => {
+let Home: React.FunctionComponent<TemplateInterface>
+Home = () => {
+  const storedConfig = window.localStorage.getItem('config')
+  const defaultState = storedConfig
+    ? JSON.parse(storedConfig)
+    : {
+        config: DEFAULT_CONFIG,
+        currentNoteIndex: 0,
+        notes: generateNotes(4, DEFAULT_CONFIG),
+        mode: Modes.piano,
+      }
+  const [state, dispatch] = React.useReducer(reducer, defaultState)
+  window.localStorage.setItem('config', JSON.stringify(state))
+  const { config, currentNoteIndex, notes, mode } = state
+  React.useEffect(() => {
     if (currentNoteIndex === notes.length) {
-      setRawNotes(generateNotes(4))
-      setCurrentNoteIndex(0)
+      dispatch({ value: generateNotes(4, config), type: ActionTypes.setNotes })
     }
-  }, [currentNoteIndex, notes.length])
+  }, [config, currentNoteIndex, notes.length])
+
+  const time = 30
+  const { fail, success, start, end, isRunning } = useScore(time)
+
+  React.useEffect(() => {
+    dispatch({ value: generateNotes(4, config), type: ActionTypes.setNotes })
+  }, [config, isRunning])
 
   const handleNote = React.useCallback(
     (note: Notes) => {
-      if (note === notes?.[currentNoteIndex]) {
-        setCurrentNoteIndex(currentNoteIndex + 1)
+      if (isSameNote(note, notes?.[currentNoteIndex])) {
+        dispatch({ type: ActionTypes.foundNote })
+        success()
+      } else {
+        fail()
       }
     },
-    [currentNoteIndex, notes]
+    [currentNoteIndex, fail, notes, success]
   )
 
+  const staveConfig = {
+    clef: config.clef,
+    addAccidental: !config.tone,
+    tone: config.tone,
+  }
+  const configModal = (
+    <Modal
+      persistent
+      triggerElement={
+        <Tooltip title="Configurer">
+          <IconButton small icon="settings" disabled={isRunning} />
+        </Tooltip>
+      }
+      title="Config"
+    >
+      {(modal) => (
+        <React.Fragment>
+          <ModesContainer>
+            <Tab
+              onClick={() =>
+                dispatch({ type: ActionTypes.setMode, value: Modes.piano })
+              }
+              active={mode === Modes.piano}
+            >
+              Piano
+            </Tab>
+            <Tab
+              active={mode === Modes.mic}
+              onClick={() =>
+                dispatch({ type: ActionTypes.setMode, value: Modes.mic })
+              }
+            >
+              Micro
+            </Tab>
+          </ModesContainer>
+          <br />
+          <ConfigForm
+            disabled={isRunning}
+            value={config}
+            onChange={(value) =>
+              dispatch({ type: ActionTypes.setConfig, value })
+            }
+          />
+          <ActionBar>
+            <Button fullWidth onClick={modal.close}>
+              Valider
+            </Button>
+          </ActionBar>
+        </React.Fragment>
+      )}
+    </Modal>
+  )
   return (
-    <HomeContainer>
-      <ModesContainer>
-        <Tab onClick={() => setMode(Modes.piano)} active={mode === Modes.piano}>
-          Piano
-        </Tab>
-        <Tab onClick={() => setMode(Modes.mic)} active={mode === Modes.mic}>
-          Mic
-        </Tab>
-      </ModesContainer>
-      <GameContent>
-        <Stave currentNoteIndex={currentNoteIndex} notes={notes} />
-        {mode === Modes.piano && <Piano onKeyPressed={handleNote} />}
-        {mode === Modes.mic && <MicPlay onNotePlayed={handleNote} />}
-      </GameContent>
+    <HomeContainer backgroundColor={palette.darkBlue[800]}>
+      <HomeHeaderBar backgroundColor={palette.darkBlue[800]}>
+        <Title type="regular">Sheet teacher</Title>
+        {configModal}
+      </HomeHeaderBar>
+      <HomeContent>
+        <GameContent>
+          <StaveContainer spacing="narrow-horizontal-only">
+            <Stave
+              currentNoteIndex={currentNoteIndex}
+              notes={notes}
+              config={staveConfig}
+            />
+          </StaveContainer>
+          {mode === Modes.piano && <Piano onKeyPressed={handleNote} />}
+          {mode === Modes.mic && <MicPlay onNotePlayed={handleNote} />}
+          <br />
+          <TimerContainer>
+            <Timer time={time} onStart={start} onEnd={end} />
+          </TimerContainer>
+        </GameContent>
+      </HomeContent>
+      <SmallConfigConfigContainer>{configModal}</SmallConfigConfigContainer>
     </HomeContainer>
   )
 }

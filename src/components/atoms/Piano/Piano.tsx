@@ -1,13 +1,15 @@
+import { uniq } from 'lodash'
 import * as React from 'react'
 
 import { Text } from '@habx/ui-core'
 
-import { Notes, translateNote } from '@lib/notes'
+import { translateNote } from '@lib/notes'
 import { playNote } from '@lib/sound'
+import { Notes } from '@lib/types'
 
-import { Key, PianoContainer } from './Piano.style'
+import { Key, KeysContainerPiano, PianoContainer } from './Piano.style'
 
-const NOTES: Notes[] = Object.values(Notes)
+const NOTES: string[] = uniq(Object.values(Notes))
 const KEYS = [
   'q',
   'z',
@@ -29,7 +31,7 @@ const KEYS = [
   'p',
   'm',
 ]
-const mapKeys = (notes) => {
+const mapKeys = (notes: string[]) => {
   let index = 0
   const keys = {}
   for (let noteIndex = 0; noteIndex < notes.length; noteIndex++) {
@@ -46,11 +48,11 @@ const mapKeys = (notes) => {
   return keys
 }
 const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
-  const [activeNote, setActiveNote] = React.useState<Notes>(null)
+  const [activeNote, setActiveNote] = React.useState<string>(null)
   const mappedKeys = React.useMemo(() => mapKeys(NOTES), [])
 
   const handleNotePlayed = React.useCallback(
-    (note: Notes) => {
+    (note: string) => {
       setActiveNote(note)
       onKeyPressed(note)
     },
@@ -58,8 +60,11 @@ const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
   )
 
   const handleKeyPressed = React.useCallback(
-    (note: Notes) => {
-      playNote(note)
+    (note: string, octave: number = 4) => {
+      if (!Notes[note]) {
+        return
+      }
+      playNote(note, octave)
       handleNotePlayed(note)
     },
     [handleNotePlayed]
@@ -78,27 +83,28 @@ const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
       window.removeEventListener('keyup', unlogKey)
     }
   }, [activeNote, handleKeyPressed, handleNotePlayed, mappedKeys, onKeyPressed])
-
   return (
-    <PianoContainer>
-      {NOTES.map((note) => (
-        <Key
-          data-black={note.includes('#')}
-          data-active={note === activeNote}
-          onMouseDown={() => handleKeyPressed(note)}
-          onMouseUp={() => setActiveNote(null)}
-        >
-          {!note.includes('#') && (
-            <Text type="caption">{translateNote(note)}</Text>
-          )}
-        </Key>
-      ))}
+    <PianoContainer backgroundColor="#fff">
+      <KeysContainerPiano>
+        {NOTES.map((note) => (
+          <Key
+            data-black={note.includes('#')}
+            data-active={note === activeNote}
+            onMouseDown={() => handleKeyPressed(note)}
+            onMouseUp={() => setActiveNote(null)}
+          >
+            {!note.includes('#') && (
+              <Text type="caption">{translateNote(note)}</Text>
+            )}
+          </Key>
+        ))}
+      </KeysContainerPiano>
     </PianoContainer>
   )
 }
 
 interface PianoInterface {
-  onKeyPressed: (note: Notes) => void
+  onKeyPressed: (note: string) => void
 }
 
 export default Piano

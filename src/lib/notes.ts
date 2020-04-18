@@ -1,18 +1,6 @@
-export enum Notes {
-  'C4' = 'C4',
-  'C#4' = 'C#4',
-  'D4' = 'D4',
-  'D#4' = 'D#4',
-  'E4' = 'E4',
-  'F4' = 'F4',
-  'F#4' = 'F#4',
-  'G4' = 'G4',
-  'G#4' = 'G#4',
-  'A4' = 'A4',
-  'A#4' = 'A#4',
-  'B4' = 'B4',
-  'C5' = 'C5',
-}
+import { GenerateNoteConfig } from '@lib/config'
+import { getToneNotes } from '@lib/tones'
+import { Notes } from '@lib/types'
 
 export const translateNote = (note: string) => {
   if (!note) {
@@ -36,3 +24,38 @@ export const translateNote = (note: string) => {
       return ['Sol', ...rest].join('')
   }
 }
+
+export const removeOctave = (note: string) =>
+  note
+    ?.split('')
+    .filter((c) => !Number(c))
+    .join('')
+
+export const isSameNote = (a: string, b: string) =>
+  Notes[removeOctave(a)] === Notes[removeOctave(b)]
+
+export const generateNote = (config: GenerateNoteConfig) => {
+  const notes = config.tone
+    ? getToneNotes(config.tone).flatMap((note) =>
+        config.octaves.map((octave) => `${note}${octave}`)
+      )
+    : Object.keys(Notes).filter((note) => {
+        if (!config.withFlat && note.includes('b')) {
+          return false
+        }
+        if (!config.withSharp && note.includes('#')) {
+          return false
+        }
+        return true
+      })
+  const randomNoteIndex = Math.floor(Math.random() * Math.floor(notes.length))
+  const [note, octave] = notes[randomNoteIndex].split('')
+
+  const randomOctaveIndex = Math.floor(
+    Math.random() * Math.floor(config.octaves.length)
+  )
+  return `${note}${config.octaves[randomOctaveIndex]}${octave ?? ''}`
+}
+
+export const generateNotes = (length: number, config: GenerateNoteConfig) =>
+  new Array(length).fill(0).map(() => generateNote(config))

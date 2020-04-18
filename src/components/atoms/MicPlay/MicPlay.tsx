@@ -1,10 +1,11 @@
 import * as React from 'react'
 import { CSSProperties } from 'styled-components'
 
-import { MicPlayContainer } from '@components/atoms/MicPlay/MicPlay.style'
-
 import useDetectPitch from '@hooks/useDetechPitch'
-import { Notes, translateNote } from '@lib/notes'
+import { translateNote } from '@lib/notes'
+import { Notes } from '@lib/types'
+
+import { MicPlayContainer } from './MicPlay.style'
 
 const NOTES: Notes[] = Object.values(Notes)
 

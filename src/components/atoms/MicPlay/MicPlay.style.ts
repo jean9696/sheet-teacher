@@ -11,13 +11,14 @@ export const MicPlayContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  margin: 128px;
   &:before {
     content: '';
     position: absolute;
     width: 100%;
     height: 100%;
     border-radius: 100%;
-    border: solid 1px ${theme.color('primary')};
+    border: solid 1px ${theme.color('secondary')};
     transform: scale(var(--scaleRatio));
   }
 `

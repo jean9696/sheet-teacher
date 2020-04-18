@@ -3,18 +3,21 @@ import Vex from 'vexflow'
 
 import { useTheme } from '@habx/ui-core'
 
-import { Notes } from '@lib/notes'
+import { StaveClef, StaveConfig } from '@lib/config'
+import { Tones } from '@lib/types'
+
 const VF = Vex.Flow
 
 const WIDTH = 500
-const HEIGHT = 200
+const HEIGHT = 150
 
-const useStave = () => {
-  const staveRef = React.useRef()
+const useStave = (config: StaveConfig) => {
+  const staveRef = React.useRef<HTMLDivElement>(null)
 
   const [loading, setLoading] = React.useState<boolean>(true)
   const vexStave = React.useMemo(() => {
     if (!loading) {
+      staveRef.current.innerHTML = ''
       const renderer = new VF.Renderer(
         staveRef.current,
         // @ts-ignore
@@ -24,11 +27,16 @@ const useStave = () => {
       renderer.resize(WIDTH, HEIGHT)
       const context = renderer.getContext()
 
-      const stave = new VF.Stave(10, 40, WIDTH * 0.8)
-
-      stave.addClef('treble')
-
-      stave.setContext(context).draw()
+      const stave = new VF.Stave(0, HEIGHT / 10, WIDTH)
+      stave.setContext(context)
+      stave.addClef(config.clef)
+      if (config.tone) {
+        const vexTone = Object.keys(Tones)
+          .find((toneKey) => Tones[toneKey] === config.tone)
+          .split('_')[0]
+        stave.addKeySignature(vexTone)
+      }
+      stave.draw()
       return {
         stave,
         context,
@@ -36,36 +44,46 @@ const useStave = () => {
       }
     }
     return { loading }
-  }, [loading])
+  }, [config.clef, config.tone, loading])
+
   if (loading) {
-    setTimeout(() => setLoading(!staveRef.current), 200)
+    setTimeout(() => setLoading(!staveRef.current), 10)
   }
   return { ...vexStave, staveRef }
+}
+
+const DEFAULT_CONFIG: StaveConfig = {
+  addAccidental: true,
+  clef: StaveClef.treble,
 }
 
 const Stave: React.FunctionComponent<StaveInterface> = ({
   notes: rawNotes,
   currentNoteIndex,
+  config = DEFAULT_CONFIG,
 }) => {
   const theme = useTheme()
 
-  const vexStave = useStave()
+  const vexStave = useStave(config)
 
   React.useEffect(() => {
     if (!vexStave.loading) {
       // @ts-ignore
       const group = vexStave.context.openGroup()
       const notes = rawNotes.map((note, index) => {
-        const noteArray = note.split('')
-        noteArray.splice(noteArray.length - 1, 0, '/')
-        const vexNote = noteArray.join('')
+        const vexNote = [...note.split('')].splice(0, 2).join('/')
         const staveNote = new Vex.Flow.StaveNote({
-          clef: 'treble',
+          clef: config.clef,
           keys: [vexNote],
           duration: 'q',
         })
-        if (note.includes('#')) {
-          staveNote.addAccidental(0, new VF.Accidental('#'))
+        if (config.addAccidental) {
+          if (note.includes('b')) {
+            staveNote.addAccidental(0, new VF.Accidental('b'))
+          }
+          if (note.includes('#')) {
+            staveNote.addAccidental(0, new VF.Accidental('#'))
+          }
         }
         if (index === currentNoteIndex) {
           staveNote.setStyle({ fillStyle: theme.colors.primary.base })
@@ -82,6 +100,8 @@ const Stave: React.FunctionComponent<StaveInterface> = ({
       return () => vexStave.context.svg.removeChild(group)
     }
   }, [
+    config.addAccidental,
+    config.clef,
     currentNoteIndex,
     rawNotes,
     theme.colors.primary.base,
@@ -93,8 +113,9 @@ const Stave: React.FunctionComponent<StaveInterface> = ({
 }
 
 interface StaveInterface {
-  notes: Notes[]
+  notes: string[]
   currentNoteIndex: number
+  config?: StaveConfig
 }
 
 export default Stave

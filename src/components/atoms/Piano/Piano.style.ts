@@ -1,11 +1,12 @@
 import styled from 'styled-components'
 
-import { palette } from '@habx/ui-core'
+import { Background, palette } from '@habx/ui-core'
 
-export const PianoContainer = styled.ul`
+import { smallBreakpoint } from '@lib/breakpoints'
+
+export const KeysContainerPiano = styled.ul`
   margin: 0;
   padding: 0;
-  height: 18.875em;
   position: relative;
   border-top: 1px solid ${palette.darkBlue[300]};
 `
@@ -60,4 +61,17 @@ export const Key = styled.li`
   align-items: flex-end;
   justify-content: center;
   padding: 0 0 8px;
+
+  @media (${smallBreakpoint}) {
+    &[data-black='true'] {
+      height: 4em;
+    }
+    &[data-black='false'] {
+      height: 10em;
+    }
+  }
+`
+
+export const PianoContainer = styled(Background)`
+  background: transparent !important;
 `

@@ -10,7 +10,7 @@ const useScore = (time: number) => {
   const [started, setStarted] = React.useState<boolean>(false)
   const scoreRef = React.useRef<typeof INITIAL_SCORE>({ ...INITIAL_SCORE })
   const ratio = scoreRef.current.success - scoreRef.current.fail * 0.5
-  const stars = ratio < 2 ? 0 : Math.floor((ratio / (time * 1.2)) * 3)
+  const stars = ratio < 2 ? 0 : Math.floor((ratio / time) * 3)
   return {
     isRunning: started,
     success: () => (scoreRef.current.success += 1),

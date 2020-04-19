@@ -88,6 +88,7 @@ const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
       <KeysContainerPiano>
         {NOTES.map((note) => (
           <Key
+            key={note}
             data-black={note.includes('#')}
             data-active={note === activeNote}
             onMouseDown={() => handleKeyPressed(note)}
@@ -98,19 +99,6 @@ const Piano: React.FunctionComponent<PianoInterface> = ({ onKeyPressed }) => {
             )}
           </Key>
         ))}
-        {window.innerWidth > 800 &&
-          NOTES.map((note) => (
-            <Key
-              data-black={note.includes('#')}
-              data-active={note === activeNote}
-              onMouseDown={() => handleKeyPressed(note, 5)}
-              onMouseUp={() => setActiveNote(null)}
-            >
-              {!note.includes('#') && (
-                <Text type="caption">{translateNote(note)}</Text>
-              )}
-            </Key>
-          ))}
       </KeysContainerPiano>
     </PianoContainer>
   )

@@ -54,7 +54,7 @@
     "@types/react-dom": "^16.9.6",
     "@types/react-router-dom": "^5.1.4",
     "@types/styled-components": "^5.0.1",
-    "@types/vexflow": "^1.2.33",
+    "@types/vexflow": "^1.2.34",
     "bundlewatch": "^0.2.6",
     "circular-dependency-plugin": "^5.2.0",
     "cross-env": "^7.0.2",

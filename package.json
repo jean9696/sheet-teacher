@@ -33,7 +33,7 @@
   "dependencies": {
     "@habx/lib-client-intl": "^1.0.2",
     "@habx/lib-form-helper": "^4.1.0",
-    "@habx/ui-core": "^3.0.0",
+    "@habx/ui-core": "^3.13.0",
     "final-form": "^4.19.1",
     "final-form-arrays": "^3.0.2",
     "graphql-tag": "^2.10.3",

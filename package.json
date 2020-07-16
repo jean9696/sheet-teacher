@@ -37,7 +37,7 @@
     "final-form": "^4.19.1",
     "final-form-arrays": "^3.0.2",
     "graphql-tag": "^2.10.3",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "react-final-form": "^6.4.0",
